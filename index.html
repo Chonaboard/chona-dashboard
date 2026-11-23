@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Статус по работам бурения и ГиР — Проект «Чона газ»</title>
+  <title>Аналитический дашборд — Загрузка данных</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     :root {
@@ -63,61 +63,82 @@
       transition: background 0.3s ease, color 0.3s ease;
     }
 
+    /* Спокойная нейтральная стартовая страница без упоминания проекта */
     #uploadScreen {
       width: 100vw;
       height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg-slide);
+      background: #171E28;
+      color: #E2E8F0;
       padding: 24px;
     }
+    body.light-theme #uploadScreen {
+      background: #F1F5F9;
+      color: #1E293B;
+    }
     .drop-card {
-      max-width: 640px;
+      max-width: 560px;
       width: 100%;
-      background: var(--card-bg);
-      backdrop-filter: var(--card-blur);
-      -webkit-backdrop-filter: var(--card-blur);
-      border: 2px dashed var(--accent-bright);
-      border-radius: 24px;
-      padding: 44px 36px;
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px dashed rgba(148, 163, 184, 0.45);
+      border-radius: 20px;
+      padding: 40px 32px;
       text-align: center;
-      box-shadow: var(--card-shadow);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
       transition: 0.2s;
       cursor: pointer;
     }
-    .drop-card.dragover { transform: scale(1.02); border-color: #F37021; }
+    body.light-theme .drop-card {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+    .drop-card.dragover {
+      border-color: #64748B;
+      transform: translateY(-2px);
+    }
     .security-pill {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
+      gap: 6px;
+      padding: 5px 12px;
       border-radius: 999px;
-      background: rgba(16, 185, 129, 0.16);
-      border: 1px solid rgba(52, 211, 153, 0.45);
-      color: #6EE7B7;
-      font-size: 13px;
-      font-weight: 700;
-      margin-bottom: 20px;
+      background: rgba(148, 163, 184, 0.14);
+      color: #94A3B8;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 18px;
     }
-    body.light-theme .security-pill { color: #047857; background: rgba(16, 185, 129, 0.12); }
-    .drop-title { font-size: 28px; font-weight: 800; margin-bottom: 10px; }
-    .drop-sub { font-size: 15px; color: var(--text-sub); line-height: 1.5; margin-bottom: 24px; }
+    body.light-theme .security-pill {
+      background: #F1F5F9;
+      color: #64748B;
+    }
+    .drop-title { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+    .drop-sub { font-size: 14px; color: #94A3B8; line-height: 1.5; margin-bottom: 24px; }
+    body.light-theme .drop-sub { color: #64748B; }
     .upload-btn {
       display: inline-block;
-      padding: 12px 28px;
-      background: linear-gradient(135deg, #0079C2, #00A9E0);
-      color: #FFFFFF;
-      font-size: 15px;
-      font-weight: 700;
-      border-radius: 999px;
-      border: none;
+      padding: 11px 24px;
+      background: #334155;
+      color: #F8FAFC;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
       cursor: pointer;
-      box-shadow: 0 6px 18px rgba(0, 121, 194, 0.35);
+      transition: 0.15s;
+    }
+    .upload-btn:hover { background: #475569; }
+    body.light-theme .upload-btn {
+      background: #0F172A;
+      color: #FFFFFF;
     }
     #fileInput { display: none; }
-    #errorMsg { color: #F37021; font-size: 14px; font-weight: 700; margin-top: 14px; }
+    #errorMsg { color: #F87171; font-size: 13px; font-weight: 600; margin-top: 14px; }
 
+    /* Слайды презентации */
     #presentationApp { display: none; }
     .slide { display: none; width: 100vw; height: 100vh; padding: 16px 32px 54px; background: var(--bg-slide); position: relative; }
     .slide.active { display: flex; flex-direction: column; }
@@ -135,18 +156,19 @@
     h2 { font-size: 24px; color: var(--text-main); font-weight: 700; }
     .unit-bar { display: inline-flex; align-items: center; gap: 8px; background: var(--badge-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); color: var(--text-main); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 999px; margin-bottom: 10px; align-self: flex-start; flex-shrink: 0; }
 
+    /* Слайд 2: 3 колонки бурения + схема конструкции */
     .drill-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; flex: 1; overflow-y: auto; align-content: stretch; }
-    .drill-card { background: var(--card-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); border-top: 4px solid #0079C2; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: var(--card-shadow); }
-    .drill-card-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-line); padding-bottom: 8px; }
+    .drill-card { background: var(--card-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); border-top: 4px solid #0079C2; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; box-shadow: var(--card-shadow); }
+    .drill-card-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-line); padding-bottom: 7px; }
     .drill-title { font-size: 20px; font-weight: 800; color: var(--text-main); }
     .drill-num { font-size: 13px; font-weight: 700; color: #FFFFFF; background: linear-gradient(135deg, #0079C2, #00A9E0); padding: 3px 11px; border-radius: 999px; }
-    .drill-group { background: var(--sub-bg); border: 1px solid var(--sub-border); border-radius: 14px; padding: 9px 11px; display: flex; flex-direction: column; gap: 5px; }
+    .drill-group { background: var(--sub-bg); border: 1px solid var(--sub-border); border-radius: 14px; padding: 8px 11px; display: flex; flex-direction: column; gap: 5px; }
     .drill-group.cost-group { background: var(--cost-bg); border: 1px solid var(--cost-border); border-left: 4px solid #F37021; }
-    .d-group-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent-bright); margin-bottom: 3px; }
+    .d-group-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent-bright); margin-bottom: 2px; }
     .cost-group .d-group-label { color: #F37021; }
     .dates-two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .dates-col { display: flex; flex-direction: column; gap: 6px; }
-    .date-box { background: var(--card-bg); border: 1px solid var(--sub-border); border-radius: 10px; padding: 6px 9px; display: flex; flex-direction: column; }
+    .dates-col { display: flex; flex-direction: column; gap: 5px; }
+    .date-box { background: var(--card-bg); border: 1px solid var(--sub-border); border-radius: 10px; padding: 5px 9px; display: flex; flex-direction: column; }
     .date-k { font-size: 11px; font-weight: 600; color: var(--text-muted); }
     .date-v { font-size: 14px; font-weight: 800; color: var(--text-main); margin-top: 1px; }
     .drill-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 3px 2px; border-bottom: 1px solid var(--border-line); }
@@ -154,6 +176,23 @@
     .drill-key { font-size: 13px; font-weight: 600; color: var(--text-sub); flex-shrink: 0; max-width: 54%; }
     .drill-val { font-size: 14px; font-weight: 700; color: var(--text-main); text-align: right; word-break: break-word; }
 
+    /* Блок схемы конструкции скважины */
+    .well-schema-box {
+      margin-top: 4px;
+      background: var(--card-bg);
+      border: 1px solid var(--sub-border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .schema-caption { font-size: 11px; font-weight: 700; color: var(--text-muted); line-height: 1.3; }
+    .schema-caption b { display: block; color: var(--accent-bright); font-size: 12px; }
+    .well-svg { width: 170px; height: 52px; flex-shrink: 0; }
+
+    /* Слайды 3 и 4: Дебит + справочно Давление */
     .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
     .legend { display: flex; gap: 12px; font-size: 12px; font-weight: 600; color: var(--text-sub); }
     .legend-item { display: flex; align-items: center; gap: 5px; }
@@ -190,6 +229,7 @@
     .press-label { font-weight: 600; color: var(--text-muted); }
     .press-vals { font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
 
+    /* Слайд 5: Пласты и матрица ячеек */
     .pads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; flex: 1; overflow-y: auto; align-content: start; }
     .pad-card { background: var(--card-bg); border: 1px solid var(--card-border); border-top: 4px solid #0079C2; border-radius: 18px; padding: 16px; box-shadow: var(--card-shadow); }
     .pad-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-line); padding-bottom: 10px; margin-bottom: 12px; }
@@ -207,6 +247,95 @@
     .w-cell.extra { background: #10B981; border: 1px solid #059669; box-shadow: 0 0 8px rgba(16, 185, 129, 0.65); }
     .cell-legend-box { display: inline-block; width: 18px; height: 11px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
 
+    /* Слайд 6: Дорожки Ганта (5-я вкладка Р7) */
+    .gantt-container {
+      background: var(--card-bg);
+      backdrop-filter: var(--card-blur);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 14px 18px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: var(--card-shadow);
+    }
+    .gantt-header-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 280px;
+      gap: 14px;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-line);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .gantt-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-bright);
+    }
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 280px;
+      gap: 14px;
+      align-items: center;
+      background: var(--sub-bg);
+      border: 1px solid var(--sub-border);
+      border-radius: 12px;
+      padding: 9px 12px;
+    }
+    .gantt-well { font-size: 15px; font-weight: 800; color: var(--text-main); }
+    .gantt-dates-sub { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 2px; }
+    .gantt-lane {
+      position: relative;
+      height: 28px;
+      background: var(--track-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .gantt-bar {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      background: linear-gradient(90deg, #0079C2, #00A9E0);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 8px rgba(0, 121, 194, 0.35);
+    }
+    .gantt-bar.warn-bar {
+      background: linear-gradient(90deg, #EA580C, #F37021);
+    }
+    .gantt-comment {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      line-height: 1.35;
+      background: var(--card-bg);
+      border: 1px solid var(--sub-border);
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    /* Панель управления */
     .controls { position: fixed; bottom: 14px; right: 26px; display: flex; align-items: center; gap: 12px; background: var(--ctrl-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 100; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14); }
     .controls button { background: none; border: none; color: var(--accent-bright); font-size: 17px; cursor: pointer; padding: 2px 6px; }
     .reload-btn { font-size: 12px !important; font-weight: 700; padding: 4px 10px !important; border-radius: 999px; background: rgba(0, 121, 194, 0.15) !important; }
@@ -220,20 +349,22 @@
 </head>
 <body>
 
+  <!-- НЕЙТРАЛЬНАЯ СТАРТОВАЯ СТРАНИЦА ЗАГРУЗКИ -->
   <div id="uploadScreen">
     <div class="drop-card" id="dropZone">
-      <div class="security-pill">Локальная обработка • Данные не передаются в сеть</div>
-      <div class="drop-title">Дашборд «Чона газ»</div>
+      <div class="security-pill">Локальная обработка в браузере</div>
+      <div class="drop-title">Загрузка исходной таблицы</div>
       <p class="drop-sub">
-        Перетащите сюда файл таблицы <b>.xlsx</b> из Р7-Офис или выберите его на компьютере.<br>
-        Файл обрабатывается исключительно в оперативной памяти вашего браузера.
+        Перетащите сюда файл <b>.xlsx</b> из Р7-Офис или выберите его на устройстве.<br>
+        Данные обрабатываются локально и не передаются по сети.
       </p>
-      <button class="upload-btn" type="button" id="selectBtn">Выбрать файл Р7 (.xlsx)</button>
+      <button class="upload-btn" type="button" id="selectBtn">Выбрать файл (.xlsx)</button>
       <input type="file" id="fileInput" accept=".xlsx,.xls">
       <div id="errorMsg"></div>
     </div>
   </div>
 
+  <!-- КОНТЕЙНЕР ПРЕЗЕНТАЦИИ -->
   <div id="presentationApp">
     <div id="slidesContainer"></div>
     <div class="controls">
@@ -259,20 +390,10 @@
     var selectBtn = document.getElementById('selectBtn');
     var errorMsg = document.getElementById('errorMsg');
 
-    selectBtn.onclick = function (e) {
-      e.stopPropagation();
-      fileInput.click();
-    };
-    dropZone.onclick = function () {
-      fileInput.click();
-    };
-    dropZone.ondragover = function (e) {
-      e.preventDefault();
-      dropZone.classList.add('dragover');
-    };
-    dropZone.ondragleave = function () {
-      dropZone.classList.remove('dragover');
-    };
+    selectBtn.onclick = function (e) { e.stopPropagation(); fileInput.click(); };
+    dropZone.onclick = function () { fileInput.click(); };
+    dropZone.ondragover = function (e) { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = function () { dropZone.classList.remove('dragover'); };
     dropZone.ondrop = function (e) {
       e.preventDefault();
       dropZone.classList.remove('dragover');
@@ -327,6 +448,7 @@
         return;
       }
 
+      // Сбор данных листа пластов (3-я вкладка: индекс 2)
       var aKnownPads = [];
       var oPadsMap = {};
       var aPadOrder = [];
@@ -387,6 +509,7 @@
       var oNow = new Date();
       var sDateStr = ('0' + oNow.getDate()).slice(-2) + '.' + ('0' + (oNow.getMonth() + 1)).slice(-2) + '.' + oNow.getFullYear();
 
+      // Слайд 1: Титульный
       sSlidesHtml +=
         "<section class='slide active'>" +
         "  <div class='slide-inner title-screen'>" +
@@ -397,15 +520,22 @@
         "  </div>" +
         "</section>";
 
+      // Слайд 2: 1-я вкладка — Справка по бурению + схемы конструкции скважин
       if (aDataSheets.length >= 1) {
         sSlidesHtml += buildDrillingInfoSlide(aDataSheets[0]);
       }
+
+      // Слайд 3: 2-я вкладка — Скважины 2026
       if (aDataSheets.length >= 2) {
         sSlidesHtml += parseAndBuildCombinedSheet(aDataSheets[1], 'y2026', aPadOrder, aSortedKnownPads);
       }
+
+      // Слайд 4: 4-я вкладка — Скважины 2027
       if (aDataSheets.length >= 4) {
         sSlidesHtml += parseAndBuildCombinedSheet(aDataSheets[3], 'y2027', aPadOrder, aSortedKnownPads);
       }
+
+      // Слайд 5: 3-я вкладка — Пласты и кусты
       if (aPadOrder.length > 0) {
         sSlidesHtml += buildWellPadsMatrixSlide(
           sSheetPadsName,
@@ -413,6 +543,11 @@
           aPadOrder,
           oPadsMap
         );
+      }
+
+      // Слайд 6: 5-я вкладка — Дорожки Ганта с работами и комментариями
+      if (aDataSheets.length >= 5) {
+        sSlidesHtml += buildGanttSlide(aDataSheets[4]);
       }
 
       document.getElementById('slidesContainer').innerHTML = sSlidesHtml;
@@ -468,7 +603,7 @@
       var lbl = document.getElementById('themeLabel');
       if (this.checked) {
         document.body.classList.add('light-theme');
-        lbl.textContent = 'iOS Light';
+        lbl.textContent = 'Светлая';
       } else {
         document.body.classList.remove('light-theme');
         lbl.textContent = 'Темная';
@@ -506,6 +641,9 @@
       if (el) { el.textContent = totalVisible + ' из ' + totalAll; }
     }
 
+    // =========================================================================
+    // СЛАЙД 2: Справка по бурению + SVG-схема конструкции скважины
+    // =========================================================================
     function buildDrillingInfoSlide(sheetData) {
       var sSheetName = sheetData.name;
       var aVal = sheetData.values;
@@ -523,14 +661,26 @@
         nCardNum++;
 
         var aTechHtml = [];
+        var sDesignText = '';
         for (var c1 = 1; c1 <= 4 && c1 < aHeaders.length; c1++) {
           var sK1 = formatCellVal(aHeaders[c1]);
           var sV1 = formatCellVal(row[c1]);
           if (!sK1 && !sV1) { continue; }
+          if (sK1.toLowerCase().indexOf('конструкц') !== -1 || sK1.toLowerCase().indexOf('профил') !== -1 || sK1.toLowerCase().indexOf('тип') !== -1) {
+            sDesignText = sV1;
+          }
           aTechHtml.push(
             "<div class='drill-row'><span class='drill-key'>" + escapeHtml(sK1) + "</span><span class='drill-val'>" + escapeHtml(sV1 || '—') + "</span></div>"
           );
         }
+
+        if (!sDesignText) {
+          for (var cx = 1; cx <= 4 && cx < row.length; cx++) {
+            var cand = formatCellVal(row[cx]);
+            if (cand.length > sDesignText.length) { sDesignText = cand; }
+          }
+        }
+        var sSchemaHtml = buildWellSchemaSvg(sDesignText);
 
         var aStartDatesHtml = [];
         for (var c2a = 5; c2a <= 7 && c2a < aHeaders.length; c2a++) {
@@ -564,7 +714,7 @@
 
         var sGroupsMarkup = '';
         if (aTechHtml.length > 0) {
-          sGroupsMarkup += "<div class='drill-group'><div class='d-group-label'>Технические и производственные параметры</div>" + aTechHtml.join('') + "</div>";
+          sGroupsMarkup += "<div class='drill-group'><div class='d-group-label'>Технические и производственные параметры</div>" + aTechHtml.join('') + sSchemaHtml + "</div>";
         }
         if (aStartDatesHtml.length > 0 || aEndDatesHtml.length > 0) {
           sGroupsMarkup +=
@@ -588,6 +738,152 @@
         "<div class='drill-cols'>" + aColsHtml.join('') + "</div></div></section>";
     }
 
+    function buildWellSchemaSvg(sDesign) {
+      var sLow = String(sDesign || '').toLowerCase();
+      var bHasFrac = (sLow.indexOf('грп') !== -1 || sLow.indexOf('мсгрп') !== -1);
+      var bMulti = (sLow.indexOf('многозаб') !== -1 || sLow.indexOf('мзс') !== -1 || sLow.indexOf('боков') !== -1 || sLow.indexOf('бс') !== -1 || (sLow.indexOf('ствол') !== -1 && sLow.indexOf('2') !== -1));
+      var bHoriz = (sLow.indexOf('горизонт') !== -1 || sLow.indexOf('гс') !== -1 || sLow.indexOf('1500') !== -1 || sLow.indexOf('1000') !== -1 || bHasFrac);
+
+      var sTypeLabel = 'Наклонно-направленная';
+      var sSvgContent = '';
+
+      if (bMulti) {
+        sTypeLabel = 'Многозабойная / БС';
+        sSvgContent =
+          "<path d='M 16 6 L 16 22 Q 16 36 38 36 L 155 36' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<path d='M 48 36 Q 68 36 82 22 L 148 22' fill='none' stroke='#00A9E0' stroke-width='2.5' stroke-linecap='round'/>" +
+          "<path d='M 76 36 Q 94 36 108 46 L 152 46' fill='none' stroke='#38BDF8' stroke-width='2.5' stroke-linecap='round'/>" +
+          "<circle cx='16' cy='6' r='3' fill='#F37021'/>";
+      } else if (bHasFrac) {
+        sTypeLabel = 'Горизонтальный ствол + МСГРП';
+        sSvgContent =
+          "<path d='M 18 6 L 18 24 Q 18 38 42 38 L 156 38' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<line x1='64' y1='25' x2='64' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='86' y1='25' x2='86' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='108' y1='25' x2='108' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='130' y1='25' x2='130' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='150' y1='25' x2='150' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<circle cx='18' cy='6' r='3' fill='#F37021'/>";
+      } else if (bHoriz) {
+        sTypeLabel = 'Горизонтальный ствол';
+        sSvgContent =
+          "<path d='M 18 6 L 18 24 Q 18 38 44 38 L 156 38' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<line x1='52' y1='38' x2='154' y2='38' stroke='#00A9E0' stroke-width='4.5' stroke-dasharray='6 3'/>" +
+          "<circle cx='18' cy='6' r='3' fill='#F37021'/>";
+      } else {
+        sSvgContent =
+          "<path d='M 20 6 L 20 20 Q 20 32 45 38 L 145 46' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<circle cx='20' cy='6' r='3' fill='#F37021'/>";
+      }
+
+      return "<div class='well-schema-box'>" +
+        "<div class='schema-caption'><b>Схема профиля</b>" + escapeHtml(sTypeLabel) + "</div>" +
+        "<svg class='well-svg' viewBox='0 0 170 54'>" +
+        "<line x1='6' y1='8' x2='164' y2='8' stroke='#94A3B8' stroke-width='1' stroke-dasharray='3 3'/>" +
+        sSvgContent +
+        "</svg></div>";
+    }
+
+    // =========================================================================
+    // СЛАЙД 6: Дорожки Ганта по 5-й вкладке Р7
+    // =========================================================================
+    function buildGanttSlide(sheetData) {
+      var sSheetName = sheetData.name;
+      var aVal = sheetData.values;
+      if (!aVal || aVal.length < 2) { return ''; }
+
+      var aTasks = [];
+      var nMinTs = Infinity;
+      var nMaxTs = -Infinity;
+
+      for (var r = 1; r < aVal.length; r++) {
+        var row = aVal[r];
+        if (!row) { continue; }
+        var sWell = formatCellVal(row[0]);
+        var sWork = formatCellVal(row[1]);
+        if (!sWell && !sWork) { continue; }
+
+        var oStart = parseDateObj(row[2]);
+        var oEnd = parseDateObj(row[3]);
+        var sComment = formatCellVal(row[4]);
+
+        if (oStart && oEnd) {
+          var t1 = oStart.getTime();
+          var t2 = oEnd.getTime();
+          if (t2 < t1) { var tmp = t1; t1 = t2; t2 = tmp; }
+          if (t1 < nMinTs) { nMinTs = t1; }
+          if (t2 > nMaxTs) { nMaxTs = t2; }
+
+          aTasks.push({
+            well: sWell || 'Объект',
+            work: sWork || 'Этап работ',
+            startTs: t1,
+            endTs: t2,
+            startStr: formatDateObj(oStart),
+            endStr: formatDateObj(oEnd),
+            comment: sComment
+          });
+        }
+      }
+
+      if (aTasks.length === 0) { return ''; }
+
+      var nSpan = Math.max(86400000, nMaxTs - nMinTs);
+      var sMinLabel = formatDateObj(new Date(nMinTs));
+      var sMidLabel = formatDateObj(new Date(nMinTs + nSpan / 2));
+      var sMaxLabel = formatDateObj(new Date(nMaxTs));
+
+      var aRowsHtml = [];
+      for (var i = 0; i < aTasks.length; i++) {
+        var tk = aTasks[i];
+        var nLeftPct = Math.max(0, Math.min(96, ((tk.startTs - nMinTs) / nSpan) * 100));
+        var nWidthPct = Math.max(4, Math.min(100 - nLeftPct, ((tk.endTs - tk.startTs) / nSpan) * 100));
+        var sLowComm = tk.comment.toLowerCase();
+        var bIsWarn = (sLowComm.indexOf('отстав') !== -1 || sLowComm.indexOf('риск') !== -1 || sLowComm.indexOf('нпв') !== -1 || sLowComm.indexOf('задерж') !== -1);
+
+        aRowsHtml.push(
+          "<div class='gantt-row'>" +
+          "  <div><div class='gantt-well'>" + escapeHtml(tk.well) + "</div><div class='gantt-dates-sub'>" + tk.startStr + " — " + tk.endStr + "</div></div>" +
+          "  <div class='gantt-lane'><div class='gantt-bar " + (bIsWarn ? "warn-bar" : "") + "' style='left:" + nLeftPct.toFixed(1) + "%; width:" + nWidthPct.toFixed(1) + "%;' title='" + escapeHtml(tk.work) + "'>" + escapeHtml(tk.work) + "</div></div>" +
+          "  <div class='gantt-comment'>" + escapeHtml(tk.comment || 'Без комментариев') + "</div>" +
+          "</div>"
+        );
+      }
+
+      return "<section class='slide'><div class='slide-inner'>" +
+        "<div class='top-bar'><div class='title-block'><span class='gp-flame'></span><h2>" + escapeHtml(sSheetName) + "</h2></div></div>" +
+        "<div class='unit-bar'>График выполнения работ (диаграмма Ганта) • Позиций: " + aTasks.length + "</div>" +
+        "<div class='gantt-container'>" +
+        "  <div class='gantt-header-row'><div>Скважина / Сроки</div><div class='gantt-scale'><span>" + sMinLabel + "</span><span>" + sMidLabel + "</span><span>" + sMaxLabel + "</span></div><div>Комментарий</div></div>" +
+        aRowsHtml.join('') +
+        "</div></div></section>";
+    }
+
+    function parseDateObj(val) {
+      if (val === null || val === undefined || val === '') { return null; }
+      if (typeof val === 'number' && val > 20000 && val < 90000) {
+        return new Date(Math.floor(val - 25569) * 86400 * 1000);
+      }
+      var s = String(val).trim();
+      if (/^\d{5}(\.\d+)?$/.test(s)) {
+        return new Date(Math.floor(parseFloat(s) - 25569) * 86400 * 1000);
+      }
+      var m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+      if (m) {
+        var yr = parseInt(m[3], 10);
+        if (yr < 100) { yr += 2000; }
+        return new Date(Date.UTC(yr, parseInt(m[2], 10) - 1, parseInt(m[1], 10)));
+      }
+      return null;
+    }
+
+    function formatDateObj(oDate) {
+      return ('0' + oDate.getUTCDate()).slice(-2) + '.' + ('0' + (oDate.getUTCMonth() + 1)).slice(-2) + '.' + oDate.getUTCFullYear();
+    }
+
+    // =========================================================================
+    // СЛАЙДЫ 3 и 4: Дебит + справочно Давление
+    // =========================================================================
     function parseAndBuildCombinedSheet(sheetData, sSlideKey, aPreferredPadOrder, aSortedKnownPads) {
       var sSheetName = sheetData.name;
       var aVal = sheetData.values;
@@ -763,18 +1059,9 @@
     }
 
     function formatExcelDate(val) {
-      if (val === null || val === undefined || val === '') { return ''; }
-      var nSerial = NaN;
-      if (typeof val === 'number') {
-        nSerial = val;
-      } else {
-        var sTrim = String(val).trim();
-        if (/^\d{5}(\.\d+)?$/.test(sTrim)) { nSerial = parseFloat(sTrim); } else { return sTrim; }
-      }
-      if (isNaN(nSerial) || nSerial < 20000 || nSerial > 90000) { return formatCellVal(val); }
-      var nUtcDays = Math.floor(nSerial - 25569);
-      var oDate = new Date(nUtcDays * 86400 * 1000);
-      return ('0' + oDate.getUTCDate()).slice(-2) + '.' + ('0' + (oDate.getUTCMonth() + 1)).slice(-2) + '.' + oDate.getUTCFullYear();
+      var oD = parseDateObj(val);
+      if (oD) { return formatDateObj(oD); }
+      return formatCellVal(val);
     }
 
     function isDateHeader(sHeader) {
@@ -808,7 +1095,7 @@
       return '29';
     }
 
-    function escapeRegExp(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+    function escapeRegExp(str) { return str.replace(/[.*+?^${}()|[\]\]/g, '\$&'); }
     function formatCellVal(val) {
       if (val === null || val === undefined) { return ''; }
       if (typeof val === 'number') { return String(Math.round(val * 100) / 100); }
@@ -825,7 +1112,7 @@
     }
     function parseNum(str) {
       if (!str) { return NaN; }
-      return parseFloat(String(str).replace(/[\s\u00A0]+/g, '').replace(',', '.').replace(/[^0-9.-]/g, ''));
+      return parseFloat(String(str).replace(/[\s ]+/g, '').replace(',', '.').replace(/[^0-9.-]/g, ''));
     }
     function escapeHtml(text) {
       if (text === null || text === undefined) { return ''; }
