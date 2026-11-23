@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Аналитический дашборд — Загрузка данных</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg-body: #003566;
+      --bg-slide: radial-gradient(circle at 80% 15%, #0066B2 0%, #00437A 52%, #002D54 100%);
+      --text-main: #FFFFFF;
+      --text-sub: #DCEEFB;
+      --text-muted: #BAE6FD;
+      --border-line: rgba(255, 255, 255, 0.22);
+      --card-bg: rgba(0, 46, 86, 0.82);
+      --card-border: rgba(125, 211, 252, 0.45);
+      --card-shadow: 0 8px 24px rgba(0, 22, 44, 0.35);
+      --card-blur: blur(16px);
+      --sub-bg: rgba(0, 29, 56, 0.55);
+      --sub-border: rgba(125, 211, 252, 0.22);
+      --cost-bg: rgba(0, 121, 194, 0.28);
+      --cost-border: rgba(103, 232, 249, 0.55);
+      --accent-primary: #0079C2;
+      --accent-bright: #38BDF8;
+      --accent-orange: #F37021;
+      --track-bg: rgba(0, 20, 40, 0.75);
+      --plan-fill: #7D9EC0;
+      --badge-bg: rgba(255, 255, 255, 0.14);
+      --ctrl-bg: rgba(0, 34, 68, 0.88);
+    }
+
+    body.light-theme {
+      --bg-body: #E8EEF5;
+      --bg-slide: radial-gradient(circle at 15% 15%, #FFFFFF 0%, #E6EFFA 45%, #DCE6F2 100%);
+      --text-main: #0F172A;
+      --text-sub: #334155;
+      --text-muted: #64748B;
+      --border-line: rgba(15, 23, 42, 0.08);
+      --card-bg: rgba(255, 255, 255, 0.68);
+      --card-border: rgba(255, 255, 255, 0.92);
+      --card-shadow: 0 10px 30px rgba(15, 35, 65, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+      --card-blur: blur(24px) saturate(180%);
+      --sub-bg: rgba(255, 255, 255, 0.52);
+      --sub-border: rgba(0, 121, 194, 0.14);
+      --cost-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.82) 0%, rgba(235, 245, 255, 0.78) 100%);
+      --cost-border: rgba(0, 121, 194, 0.25);
+      --accent-primary: #0079C2;
+      --accent-bright: #0079C2;
+      --accent-orange: #F37021;
+      --track-bg: rgba(148, 163, 184, 0.24);
+      --plan-fill: #94A3B8;
+      --badge-bg: rgba(255, 255, 255, 0.75);
+      --ctrl-bg: rgba(255, 255, 255, 0.78);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Arial, sans-serif;
+      background: var(--bg-body);
+      color: var(--text-main);
+      overflow: hidden;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    #uploadScreen {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #171E28;
+      color: #E2E8F0;
+      padding: 24px;
+    }
+    body.light-theme #uploadScreen {
+      background: #F1F5F9;
+      color: #1E293B;
+    }
+    .drop-card {
+      max-width: 560px;
+      width: 100%;
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px dashed rgba(148, 163, 184, 0.45);
+      border-radius: 20px;
+      padding: 40px 32px;
+      text-align: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+      transition: 0.2s;
+      cursor: pointer;
+    }
+    body.light-theme .drop-card {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+    .drop-card.dragover {
+      border-color: #64748B;
+      transform: translateY(-2px);
+    }
+    .security-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.14);
+      color: #94A3B8;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    body.light-theme .security-pill {
+      background: #F1F5F9;
+      color: #64748B;
+    }
+    .drop-title { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+    .drop-sub { font-size: 14px; color: #94A3B8; line-height: 1.5; margin-bottom: 24px; }
+    body.light-theme .drop-sub { color: #64748B; }
+    .upload-btn {
+      display: inline-block;
+      padding: 11px 24px;
+      background: #334155;
+      color: #F8FAFC;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      cursor: pointer;
+      transition: 0.15s;
+    }
+    .upload-btn:hover { background: #475569; }
+    body.light-theme .upload-btn {
+      background: #0F172A;
+      color: #FFFFFF;
+    }
+    #fileInput { display: none; }
+    #errorMsg { color: #F87171; font-size: 13px; font-weight: 600; margin-top: 14px; }
+
+    #presentationApp { display: none; }
+    .slide { display: none; width: 100vw; height: 100vh; padding: 16px 32px 54px; background: var(--bg-slide); position: relative; }
+    .slide.active { display: flex; flex-direction: column; }
+    .slide-inner { max-width: 1680px; width: 100%; height: 100%; margin: 0 auto; display: flex; flex-direction: column; position: relative; z-index: 1; }
+
+    .title-screen { justify-content: center; align-items: flex-start; padding-left: 48px; }
+    .title-accent-line { width: 92px; height: 6px; border-radius: 4px; background: linear-gradient(90deg, #0079C2 0%, #00A9E0 70%, #F37021 100%); margin-bottom: 24px; }
+    .project-badge { display: inline-block; padding: 8px 20px; background: var(--badge-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); color: var(--text-main); border-radius: 999px; font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+    h1 { font-size: 54px; line-height: 1.12; color: var(--text-main); font-weight: 800; max-width: 1000px; margin-bottom: 20px; }
+    .title-meta { font-size: 18px; color: var(--text-sub); font-weight: 600; }
+
+    .top-bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-line); padding-bottom: 8px; margin-bottom: 8px; flex-shrink: 0; }
+    .title-block { display: flex; align-items: center; gap: 12px; }
+    .gp-flame { width: 11px; height: 26px; border-radius: 8px 8px 2px 2px; background: linear-gradient(180deg, #00A9E0 0%, #0079C2 75%, #F37021 100%); }
+    h2 { font-size: 24px; color: var(--text-main); font-weight: 700; }
+    .unit-bar { display: inline-flex; align-items: center; gap: 8px; background: var(--badge-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); color: var(--text-main); font-size: 13px; font-weight: 600; padding: 5px 14px; border-radius: 999px; margin-bottom: 10px; align-self: flex-start; flex-shrink: 0; }
+
+    .drill-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; flex: 1; overflow-y: auto; align-content: stretch; }
+    .drill-card { background: var(--card-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); border-top: 4px solid #0079C2; border-radius: 18px; padding: 14px 16px; display: flex; flex-direction: column; gap: 9px; box-shadow: var(--card-shadow); }
+    .drill-card-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-line); padding-bottom: 7px; }
+    .drill-title { font-size: 20px; font-weight: 800; color: var(--text-main); }
+    .drill-num { font-size: 13px; font-weight: 700; color: #FFFFFF; background: linear-gradient(135deg, #0079C2, #00A9E0); padding: 3px 11px; border-radius: 999px; }
+    .drill-group { background: var(--sub-bg); border: 1px solid var(--sub-border); border-radius: 14px; padding: 8px 11px; display: flex; flex-direction: column; gap: 5px; }
+    .drill-group.cost-group { background: var(--cost-bg); border: 1px solid var(--cost-border); border-left: 4px solid #F37021; }
+    .d-group-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent-bright); margin-bottom: 2px; }
+    .cost-group .d-group-label { color: #F37021; }
+    .dates-two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .dates-col { display: flex; flex-direction: column; gap: 5px; }
+    .date-box { background: var(--card-bg); border: 1px solid var(--sub-border); border-radius: 10px; padding: 5px 9px; display: flex; flex-direction: column; }
+    .date-k { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+    .date-v { font-size: 14px; font-weight: 800; color: var(--text-main); margin-top: 1px; }
+    .drill-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 3px 2px; border-bottom: 1px solid var(--border-line); }
+    .drill-row:last-child { border-bottom: none; }
+    .drill-key { font-size: 13px; font-weight: 600; color: var(--text-sub); flex-shrink: 0; max-width: 54%; }
+    .drill-val { font-size: 14px; font-weight: 700; color: var(--text-main); text-align: right; word-break: break-word; }
+
+    .well-schema-box {
+      margin-top: 4px;
+      background: var(--card-bg);
+      border: 1px solid var(--sub-border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .schema-caption { font-size: 11px; font-weight: 700; color: var(--text-muted); line-height: 1.3; }
+    .schema-caption b { display: block; color: var(--accent-bright); font-size: 12px; }
+    .well-svg { width: 170px; height: 52px; flex-shrink: 0; }
+
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .legend { display: flex; gap: 12px; font-size: 12px; font-weight: 600; color: var(--text-sub); }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 11px; height: 11px; border-radius: 4px; display: inline-block; }
+    .dot.plan { background: var(--plan-fill); }
+    .dot.gp-cyan { background: #0079C2; }
+    .filter-box { display: flex; align-items: center; gap: 6px; background: var(--card-bg); border: 1px solid var(--card-border); padding: 4px 10px; border-radius: 999px; }
+    .filter-input { background: transparent; border: none; color: var(--text-main); font-size: 13px; width: 145px; outline: none; padding: 3px 6px; }
+    .f-btn { background: transparent; border: none; color: var(--text-sub); font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; cursor: pointer; }
+    .f-btn.active { background: #0079C2; color: #FFFFFF; }
+    .f-count { font-size: 12px; color: var(--text-muted); padding: 0 6px; font-weight: 600; }
+
+    .pad-sections-wrap { display: flex; flex-direction: column; gap: 10px; flex: 1; overflow-y: auto; padding-right: 4px; }
+    .pad-section { background: var(--sub-bg); border: 1px solid var(--card-border); border-left: 4px solid #0079C2; border-radius: 16px; padding: 10px 14px; }
+    .pad-section.hidden { display: none; }
+    .pad-sec-title { font-size: 14px; font-weight: 800; color: var(--accent-bright); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+    .pad-sec-count { font-size: 12px; color: var(--text-sub); font-weight: 600; text-transform: none; }
+    .pf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 10px; }
+    .pf-group { padding: 10px 13px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; box-shadow: var(--card-shadow); }
+    .pf-group.hidden { display: none; }
+    .pf-well-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid var(--border-line); padding-bottom: 4px; }
+    .pf-well-title { font-size: 15px; font-weight: 700; color: var(--text-main); }
+    .pf-delta { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .delta-ok { background: rgba(0, 121, 194, 0.14); color: var(--accent-bright); }
+    .delta-warn { background: rgba(243, 112, 33, 0.15); color: #F37021; }
+    .pf-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .pf-tag { width: 34px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+    .pf-track { flex: 1; height: 9px; background: var(--track-bg); border-radius: 999px; overflow: hidden; }
+    .pf-fill { height: 100%; border-radius: 999px; }
+    .pf-fill.plan { background: var(--plan-fill); }
+    .pf-fill.gp-cyan { background: linear-gradient(90deg, #0079C2, #00A9E0); }
+    .pf-val { min-width: 52px; text-align: right; font-size: 13px; font-weight: 700; color: var(--text-main); }
+    .press-ref { margin-top: 7px; padding: 5px 9px; background: var(--sub-bg); border: 1px solid var(--sub-border); border-radius: 9px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+    .press-label { font-weight: 600; color: var(--text-muted); }
+    .press-vals { font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px; }
+
+    .pads-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; flex: 1; overflow-y: auto; align-content: start; }
+    .pad-card { background: var(--card-bg); border: 1px solid var(--card-border); border-top: 4px solid #0079C2; border-radius: 18px; padding: 16px; box-shadow: var(--card-shadow); }
+    .pad-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid var(--border-line); padding-bottom: 10px; margin-bottom: 12px; }
+    .pad-title { font-size: 19px; font-weight: 700; color: var(--text-main); }
+    .pad-debit { font-size: 13px; color: #FFFFFF; background: linear-gradient(135deg, #0079C2, #00A9E0); padding: 4px 12px; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+    .layer-block { margin-bottom: 12px; background: var(--sub-bg); border: 1px solid var(--sub-border); border-radius: 12px; padding: 10px 12px; }
+    .layer-block:last-child { margin-bottom: 0; }
+    .layer-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+    .layer-nums { color: var(--text-sub); font-size: 14px; font-weight: 600; }
+    .layer-nums b { color: var(--accent-bright); font-size: 15px; }
+    .well-cells { display: flex; flex-wrap: wrap; gap: 6px; }
+    .w-cell { width: 25px; height: 15px; border-radius: 4px; }
+    .w-cell.done { background: #0079C2; border: 1px solid #00A9E0; }
+    .w-cell.todo { background: var(--track-bg); border: 1px dashed #94A3B8; }
+    .w-cell.extra { background: #10B981; border: 1px solid #059669; box-shadow: 0 0 8px rgba(16, 185, 129, 0.65); }
+    .cell-legend-box { display: inline-block; width: 18px; height: 11px; border-radius: 3px; vertical-align: middle; margin-right: 5px; }
+
+    .gantt-container {
+      background: var(--card-bg);
+      backdrop-filter: var(--card-blur);
+      border: 1px solid var(--card-border);
+      border-radius: 18px;
+      padding: 14px 18px;
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: var(--card-shadow);
+    }
+    .gantt-header-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 280px;
+      gap: 14px;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-line);
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .gantt-scale {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-bright);
+    }
+    .gantt-row {
+      display: grid;
+      grid-template-columns: 200px 1fr 280px;
+      gap: 14px;
+      align-items: center;
+      background: var(--sub-bg);
+      border: 1px solid var(--sub-border);
+      border-radius: 12px;
+      padding: 9px 12px;
+    }
+    .gantt-well { font-size: 15px; font-weight: 800; color: var(--text-main); }
+    .gantt-dates-sub { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-top: 2px; }
+    .gantt-lane {
+      position: relative;
+      height: 28px;
+      background: var(--track-bg);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .gantt-bar {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      background: linear-gradient(90deg, #0079C2, #00A9E0);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: #FFFFFF;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      box-shadow: 0 2px 8px rgba(0, 121, 194, 0.35);
+    }
+    .gantt-bar.warn-bar {
+      background: linear-gradient(90deg, #EA580C, #F37021);
+    }
+    .gantt-comment {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-sub);
+      line-height: 1.35;
+      background: var(--card-bg);
+      border: 1px solid var(--sub-border);
+      padding: 5px 10px;
+      border-radius: 8px;
+    }
+
+    .controls { position: fixed; bottom: 14px; right: 26px; display: flex; align-items: center; gap: 12px; background: var(--ctrl-bg); backdrop-filter: var(--card-blur); border: 1px solid var(--card-border); color: var(--text-main); padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 100; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14); }
+    .controls button { background: none; border: none; color: var(--accent-bright); font-size: 17px; cursor: pointer; padding: 2px 6px; }
+    .reload-btn { font-size: 12px !important; font-weight: 700; padding: 4px 10px !important; border-radius: 999px; background: rgba(0, 121, 194, 0.15) !important; }
+    .theme-switch { display: inline-flex; align-items: center; gap: 7px; padding-right: 10px; border-right: 1px solid var(--border-line); cursor: pointer; user-select: none; }
+    .theme-switch input { display: none; }
+    .switch-track { width: 36px; height: 20px; background: #0079C2; border-radius: 999px; position: relative; transition: 0.25s; }
+    .switch-thumb { width: 16px; height: 16px; background: #FFFFFF; border-radius: 50%; position: absolute; top: 2px; left: 2px; transition: 0.25s; }
+    body.light-theme .switch-track { background: #CBD5E1; }
+    body.light-theme .switch-thumb { left: 18px; background: #0079C2; }
+  </style>
+</head>
+<body>
+
+  <div id="uploadScreen">
+    <div class="drop-card" id="dropZone">
+      <div class="security-pill">Локальная обработка в браузере</div>
+      <div class="drop-title">Загрузка исходной таблицы</div>
+      <p class="drop-sub">
+        Перетащите сюда файл <b>.xlsx</b> из Р7-Офис или выберите его на устройстве.<br>
+        Данные обрабатываются локально и не передаются по сети.
+      </p>
+      <button class="upload-btn" type="button" id="selectBtn">Выбрать файл (.xlsx)</button>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div id="errorMsg"></div>
+    </div>
+  </div>
+
+  <div id="presentationApp">
+    <div id="slidesContainer"></div>
+    <div class="controls">
+      <button class="reload-btn" id="btnReload" title="Загрузить другой файл">&#8635; Файл</button>
+      <label class="theme-switch" title="Переключить цветовую тему">
+        <input type="checkbox" id="themeToggle">
+        <span class="switch-track"><span class="switch-thumb"></span></span>
+        <span id="themeLabel">Темная</span>
+      </label>
+      <button id="btnPrev">&#9664;</button>
+      <span id="counter">1 / 1</span>
+      <button id="btnNext">&#9654;</button>
+    </div>
+  </div>
+
+  <script>
+    window.onerror = function (msg, url, line) {
+      var errEl = document.getElementById('errorMsg');
+      if (errEl) {
+        errEl.textContent = 'Ошибка скрипта (строка ' + line + '): ' + msg;
+      }
+    };
+
+    var slides = [];
+    var idx = 0;
+    var fState = {};
+
+    var dropZone = document.getElementById('dropZone');
+    var fileInput = document.getElementById('fileInput');
+    var selectBtn = document.getElementById('selectBtn');
+    var errorMsg = document.getElementById('errorMsg');
+
+    selectBtn.onclick = function (e) { e.stopPropagation(); fileInput.click(); };
+    dropZone.onclick = function () { fileInput.click(); };
+    dropZone.ondragover = function (e) { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = function () { dropZone.classList.remove('dragover'); };
+    dropZone.ondrop = function (e) {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processWorkbookFile(e.dataTransfer.files[0]);
+      }
+    };
+    fileInput.onchange = function () {
+      if (this.files && this.files.length > 0) {
+        processWorkbookFile(this.files[0]);
+      }
+    };
+
+    document.getElementById('btnReload').onclick = function () {
+      fileInput.value = '';
+      document.getElementById('presentationApp').style.display = 'none';
+      document.getElementById('uploadScreen').style.display = 'flex';
+    };
+
+    function processWorkbookFile(file) {
+      errorMsg.textContent = '';
+      if (typeof XLSX === 'undefined') {
+        errorMsg.textContent = 'Не загрузилась библиотека обработки Excel (cdnjs.cloudflare.com). Проверьте интернет или прокси.';
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          var data = new Uint8Array(e.target.result);
+          var workbook = XLSX.read(data, { type: 'array' });
+          buildDashboardFromWorkbook(workbook);
+        } catch (err) {
+          errorMsg.textContent = 'Не удалось прочитать файл: ' + err.message;
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function buildDashboardFromWorkbook(wb) {
+      var aDataSheets = [];
+      for (var s = 0; s < wb.SheetNames.length; s++) {
+        var name = wb.SheetNames[s];
+        if (name !== 'HTML_Export') {
+          var sheetObj = wb.Sheets[name];
+          var rows = XLSX.utils.sheet_to_json(sheetObj, { header: 1, defval: '' });
+          aDataSheets.push({ name: name, values: rows });
+        }
+      }
+
+      if (aDataSheets.length === 0) {
+        errorMsg.textContent = 'В книге не найдены листы с данными.';
+        return;
+      }
+
+      var aKnownPads = [];
+      var oPadsMap = {};
+      var aPadOrder = [];
+      var sSheetPadsName = '';
+      var sPadDebitUnit = 'тыс. м³/сут';
+
+      if (aDataSheets.length >= 3) {
+        sSheetPadsName = aDataSheets[2].name;
+        var aValPads = aDataSheets[2].values;
+        if (aValPads && aValPads.length >= 2) {
+          var aHeadersPads = aValPads[0];
+          sPadDebitUnit = extractUnit(aHeadersPads[4], 'тыс. м³/сут');
+          var sCurrentPad = '';
+
+          for (var r2 = 1; r2 < aValPads.length; r2++) {
+            var row2 = aValPads[r2];
+            if (!row2) { continue; }
+            var sRawPad = String(row2[0] || '').trim();
+            var sLayer = String(row2[1] || '').trim();
+            var sLowerPad = sRawPad.toLowerCase();
+
+            if (sLowerPad.indexOf('итого') === 0 || sLowerPad.indexOf('всего') === 0) { continue; }
+            if (!sRawPad && !sLayer) { continue; }
+            if (sRawPad) { sCurrentPad = sRawPad; }
+
+            var sPad = sCurrentPad || 'Прочие скважины';
+            var sWPlan = formatCellVal(row2[2]);
+            var sWFact = formatCellVal(row2[3]);
+            var sTotalDebit = formatCellVal(row2[4]);
+
+            var nWPlan = parseNum(sWPlan);
+            var nWFact = parseNum(sWFact);
+
+            if (!oPadsMap[sPad]) {
+              oPadsMap[sPad] = { layers: [], totalDebit: '' };
+              aPadOrder.push(sPad);
+              aKnownPads.push(sPad);
+            }
+            if (sTotalDebit && !oPadsMap[sPad].totalDebit) {
+              oPadsMap[sPad].totalDebit = sTotalDebit;
+            }
+            oPadsMap[sPad].layers.push({
+              layer: sLayer || 'Не указан',
+              planStr: sWPlan || '0',
+              factStr: sWFact || '0',
+              planNum: isNaN(nWPlan) ? 0 : Math.max(0, Math.round(nWPlan)),
+              factNum: isNaN(nWFact) ? 0 : Math.max(0, Math.round(nWFact))
+            });
+          }
+        }
+      }
+
+      var aSortedKnownPads = aKnownPads.slice().sort(function (a, b) {
+        return b.length - a.length;
+      });
+
+      var sSlidesHtml = '';
+      var oNow = new Date();
+      var sDateStr = ('0' + oNow.getDate()).slice(-2) + '.' + ('0' + (oNow.getMonth() + 1)).slice(-2) + '.' + oNow.getFullYear();
+
+      sSlidesHtml +=
+        "<section class='slide active'>" +
+        "  <div class='slide-inner title-screen'>" +
+        "    <div class='title-accent-line'></div>" +
+        "    <div class='project-badge'>Проект «Чона газ»</div>" +
+        "    <h1>Статус по работам бурения и ГиР</h1>" +
+        "    <p class='title-meta'>Актуальность данных: " + sDateStr + "</p>" +
+        "  </div>" +
+        "</section>";
+
+      if (aDataSheets.length >= 1) {
+        sSlidesHtml += buildDrillingInfoSlide(aDataSheets[0]);
+      }
+      if (aDataSheets.length >= 2) {
+        sSlidesHtml += parseAndBuildCombinedSheet(aDataSheets[1], 'y2026', aPadOrder, aSortedKnownPads);
+      }
+      if (aDataSheets.length >= 4) {
+        sSlidesHtml += parseAndBuildCombinedSheet(aDataSheets[3], 'y2027', aPadOrder, aSortedKnownPads);
+      }
+      if (aPadOrder.length > 0) {
+        sSlidesHtml += buildWellPadsMatrixSlide(
+          sSheetPadsName,
+          'Геологические пласты • Ед. изм.: скв. (блоки) / сумм. дебит (' + sPadDebitUnit + ')',
+          aPadOrder,
+          oPadsMap
+        );
+      }
+      if (aDataSheets.length >= 5) {
+        sSlidesHtml += buildGanttSlide(aDataSheets[4]);
+      }
+
+      document.getElementById('slidesContainer').innerHTML = sSlidesHtml;
+      document.getElementById('uploadScreen').style.display = 'none';
+      document.getElementById('presentationApp').style.display = 'block';
+
+      slides = document.querySelectorAll('.slide');
+      idx = 0;
+      fState = {};
+      bindSlideControls();
+      showSlide(0);
+    }
+
+    function bindSlideControls() {
+      var inputs = document.querySelectorAll('.filter-input');
+      for (var k = 0; k < inputs.length; k++) {
+        inputs[k].oninput = function () {
+          var t = this.getAttribute('data-type');
+          if (!fState[t]) { fState[t] = { s: 'all', q: '' }; }
+          fState[t].q = this.value.toLowerCase().trim();
+          applyF(t);
+        };
+      }
+      var btns = document.querySelectorAll('.f-btn');
+      for (var b = 0; b < btns.length; b++) {
+        btns[b].onclick = function () {
+          var t = this.getAttribute('data-type');
+          var st = this.getAttribute('data-st');
+          if (!fState[t]) { fState[t] = { s: 'all', q: '' }; }
+          fState[t].s = st;
+          var sibs = this.parentElement.querySelectorAll('.f-btn');
+          for (var m = 0; m < sibs.length; m++) { sibs[m].classList.remove('active'); }
+          this.classList.add('active');
+          applyF(t);
+        };
+      }
+    }
+
+    function showSlide(n) {
+      if (!slides.length) { return; }
+      if (n < 0) { n = 0; }
+      if (n >= slides.length) { n = slides.length - 1; }
+      slides[idx].classList.remove('active');
+      idx = n;
+      slides[idx].classList.add('active');
+      document.getElementById('counter').textContent = (idx + 1) + ' / ' + slides.length;
+    }
+
+    document.getElementById('btnPrev').onclick = function () { showSlide(idx - 1); };
+    document.getElementById('btnNext').onclick = function () { showSlide(idx + 1); };
+
+    document.getElementById('themeToggle').onchange = function () {
+      var lbl = document.getElementById('themeLabel');
+      if (this.checked) {
+        document.body.classList.add('light-theme');
+        lbl.textContent = 'Светлая';
+      } else {
+        document.body.classList.remove('light-theme');
+        lbl.textContent = 'Темная';
+      }
+    };
+
+    document.addEventListener('keydown', function (e) {
+      if (document.getElementById('presentationApp').style.display === 'none') { return; }
+      if (document.activeElement && document.activeElement.tagName === 'INPUT') { return; }
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { showSlide(idx + 1); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { showSlide(idx - 1); }
+    });
+
+    function applyF(t) {
+      if (!fState[t]) { fState[t] = { s: 'all', q: '' }; }
+      var wrap = document.getElementById('wrap-' + t);
+      if (!wrap) { return; }
+      var sections = wrap.querySelectorAll('.pad-section');
+      var totalVisible = 0;
+      var totalAll = 0;
+      for (var s = 0; s < sections.length; s++) {
+        var cards = sections[s].querySelectorAll('.pf-group');
+        var secVisible = 0;
+        for (var i = 0; i < cards.length; i++) {
+          totalAll++;
+          var w = cards[i].getAttribute('data-well') || '';
+          var st = cards[i].getAttribute('data-status') || 'ok';
+          var okQ = !fState[t].q || w.indexOf(fState[t].q) !== -1;
+          var okS = fState[t].s === 'all' || st === fState[t].s;
+          if (okQ && okS) { cards[i].classList.remove('hidden'); secVisible++; totalVisible++; } else { cards[i].classList.add('hidden'); }
+        }
+        if (secVisible === 0) { sections[s].classList.add('hidden'); } else { sections[s].classList.remove('hidden'); }
+      }
+      var el = document.getElementById('count-' + t);
+      if (el) { el.textContent = totalVisible + ' из ' + totalAll; }
+    }
+
+    function buildDrillingInfoSlide(sheetData) {
+      var sSheetName = sheetData.name;
+      var aVal = sheetData.values;
+      if (!aVal || aVal.length < 2) { return ''; }
+
+      var aHeaders = aVal[0];
+      var aColsHtml = [];
+      var nCardNum = 0;
+
+      for (var r = 1; r < aVal.length; r++) {
+        var row = aVal[r];
+        if (!row) { continue; }
+        var sTitle = formatCellVal(row[0]);
+        if (!sTitle) { continue; }
+        nCardNum++;
+
+        var aTechHtml = [];
+        var sDesignText = '';
+        for (var c1 = 1; c1 <= 4 && c1 < aHeaders.length; c1++) {
+          var sK1 = formatCellVal(aHeaders[c1]);
+          var sV1 = formatCellVal(row[c1]);
+          if (!sK1 && !sV1) { continue; }
+          if (sK1.toLowerCase().indexOf('конструкц') !== -1 || sK1.toLowerCase().indexOf('профил') !== -1 || sK1.toLowerCase().indexOf('тип') !== -1) {
+            sDesignText = sV1;
+          }
+          aTechHtml.push(
+            "<div class='drill-row'><span class='drill-key'>" + escapeHtml(sK1) + "</span><span class='drill-val'>" + escapeHtml(sV1 || '—') + "</span></div>"
+          );
+        }
+
+        if (!sDesignText) {
+          for (var cx = 1; cx <= 4 && cx < row.length; cx++) {
+            var cand = formatCellVal(row[cx]);
+            if (cand.length > sDesignText.length) { sDesignText = cand; }
+          }
+        }
+        var sSchemaHtml = buildWellSchemaSvg(sDesignText);
+
+        var aStartDatesHtml = [];
+        for (var c2a = 5; c2a <= 7 && c2a < aHeaders.length; c2a++) {
+          var sK2a = formatCellVal(aHeaders[c2a]);
+          var sV2a = isDateHeader(sK2a) ? formatExcelDate(row[c2a]) : formatCellVal(row[c2a]);
+          if (!sK2a && !sV2a) { continue; }
+          aStartDatesHtml.push(
+            "<div class='date-box'><span class='date-k'>" + escapeHtml(sK2a) + "</span><span class='date-v'>" + escapeHtml(sV2a || '—') + "</span></div>"
+          );
+        }
+
+        var aEndDatesHtml = [];
+        for (var c2b = 8; c2b <= 11 && c2b < aHeaders.length; c2b++) {
+          var sK2b = formatCellVal(aHeaders[c2b]);
+          var sV2b = isDateHeader(sK2b) ? formatExcelDate(row[c2b]) : formatCellVal(row[c2b]);
+          if (!sK2b && !sV2b) { continue; }
+          aEndDatesHtml.push(
+            "<div class='date-box'><span class='date-k'>" + escapeHtml(sK2b) + "</span><span class='date-v'>" + escapeHtml(sV2b || '—') + "</span></div>"
+          );
+        }
+
+        var aCostHtml = [];
+        for (var c3 = 12; c3 < aHeaders.length; c3++) {
+          var sK3 = formatCellVal(aHeaders[c3]);
+          var sV3 = formatCellVal(row[c3]);
+          if (!sK3 && !sV3) { continue; }
+          aCostHtml.push(
+            "<div class='drill-row'><span class='drill-key'>" + escapeHtml(sK3) + "</span><span class='drill-val'>" + escapeHtml(sV3 || '—') + "</span></div>"
+          );
+        }
+
+        var sGroupsMarkup = '';
+        if (aTechHtml.length > 0) {
+          sGroupsMarkup += "<div class='drill-group'><div class='d-group-label'>Технические и производственные параметры</div>" + aTechHtml.join('') + sSchemaHtml + "</div>";
+        }
+        if (aStartDatesHtml.length > 0 || aEndDatesHtml.length > 0) {
+          sGroupsMarkup +=
+            "<div class='drill-group'><div class='d-group-label'>Сроки строительства</div>" +
+            "<div class='dates-two-cols'><div class='dates-col'>" + aStartDatesHtml.join('') + "</div><div class='dates-col'>" + aEndDatesHtml.join('') + "</div></div></div>";
+        }
+        if (aCostHtml.length > 0) {
+          sGroupsMarkup += "<div class='drill-group cost-group'><div class='d-group-label'>Стоимостные показатели</div>" + aCostHtml.join('') + "</div>";
+        }
+
+        aColsHtml.push(
+          "<div class='drill-card'><div class='drill-card-head'><span class='drill-title'>" + escapeHtml(sTitle) + "</span><span class='drill-num'>#" + nCardNum + "</span></div>" + sGroupsMarkup + "</div>"
+        );
+      }
+
+      if (aColsHtml.length === 0) { return ''; }
+
+      return "<section class='slide'><div class='slide-inner'>" +
+        "<div class='top-bar'><div class='title-block'><span class='gp-flame'></span><h2>" + escapeHtml(sSheetName) + "</h2></div></div>" +
+        "<div class='unit-bar'>Справочная информация по скважинам в бурении • Объектов: " + nCardNum + "</div>" +
+        "<div class='drill-cols'>" + aColsHtml.join('') + "</div></div></section>";
+    }
+
+    function buildWellSchemaSvg(sDesign) {
+      var sLow = String(sDesign || '').toLowerCase();
+      var bHasFrac = (sLow.indexOf('грп') !== -1 || sLow.indexOf('мсгрп') !== -1);
+      var bMulti = (sLow.indexOf('многозаб') !== -1 || sLow.indexOf('мзс') !== -1 || sLow.indexOf('боков') !== -1 || sLow.indexOf('бс') !== -1 || (sLow.indexOf('ствол') !== -1 && sLow.indexOf('2') !== -1));
+      var bHoriz = (sLow.indexOf('горизонт') !== -1 || sLow.indexOf('гс') !== -1 || sLow.indexOf('1500') !== -1 || sLow.indexOf('1000') !== -1 || bHasFrac);
+
+      var sTypeLabel = 'Наклонно-направленная';
+      var sSvgContent = '';
+
+      if (bMulti) {
+        sTypeLabel = 'Многозабойная / БС';
+        sSvgContent =
+          "<path d='M 16 6 L 16 22 Q 16 36 38 36 L 155 36' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<path d='M 48 36 Q 68 36 82 22 L 148 22' fill='none' stroke='#00A9E0' stroke-width='2.5' stroke-linecap='round'/>" +
+          "<path d='M 76 36 Q 94 36 108 46 L 152 46' fill='none' stroke='#38BDF8' stroke-width='2.5' stroke-linecap='round'/>" +
+          "<circle cx='16' cy='6' r='3' fill='#F37021'/>";
+      } else if (bHasFrac) {
+        sTypeLabel = 'Горизонтальный ствол + МСГРП';
+        sSvgContent =
+          "<path d='M 18 6 L 18 24 Q 18 38 42 38 L 156 38' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<line x1='64' y1='25' x2='64' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='86' y1='25' x2='86' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='108' y1='25' x2='108' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='130' y1='25' x2='130' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<line x1='150' y1='25' x2='150' y2='49' stroke='#F37021' stroke-width='2.2' stroke-linecap='round'/>" +
+          "<circle cx='18' cy='6' r='3' fill='#F37021'/>";
+      } else if (bHoriz) {
+        sTypeLabel = 'Горизонтальный ствол';
+        sSvgContent =
+          "<path d='M 18 6 L 18 24 Q 18 38 44 38 L 156 38' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<line x1='52' y1='38' x2='154' y2='38' stroke='#00A9E0' stroke-width='4.5' stroke-dasharray='6 3'/>" +
+          "<circle cx='18' cy='6' r='3' fill='#F37021'/>";
+      } else {
+        sSvgContent =
+          "<path d='M 20 6 L 20 20 Q 20 32 45 38 L 145 46' fill='none' stroke='#0079C2' stroke-width='3.5' stroke-linecap='round'/>" +
+          "<circle cx='20' cy='6' r='3' fill='#F37021'/>";
+      }
+
+      return "<div class='well-schema-box'>" +
+        "<div class='schema-caption'><b>Схема профиля</b>" + escapeHtml(sTypeLabel) + "</div>" +
+        "<svg class='well-svg' viewBox='0 0 170 54'>" +
+        "<line x1='6' y1='8' x2='164' y2='8' stroke='#94A3B8' stroke-width='1' stroke-dasharray='3 3'/>" +
+        sSvgContent +
+        "</svg></div>";
+    }
+
+    function buildGanttSlide(sheetData) {
+      var sSheetName = sheetData.name;
+      var aVal = sheetData.values;
+      if (!aVal || aVal.length < 2) { return ''; }
+
+      var aTasks = [];
+      var nMinTs = Infinity;
+      var nMaxTs = -Infinity;
+
+      for (var r = 1; r < aVal.length; r++) {
+        var row = aVal[r];
+        if (!row) { continue; }
+        var sWell = formatCellVal(row[0]);
+        var sWork = formatCellVal(row[1]);
+        if (!sWell && !sWork) { continue; }
+
+        var oStart = parseDateObj(row[2]);
+        var oEnd = parseDateObj(row[3]);
+        var sComment = formatCellVal(row[4]);
+
+        if (oStart && oEnd) {
+          var t1 = oStart.getTime();
+          var t2 = oEnd.getTime();
+          if (t2 < t1) { var tmp = t1; t1 = t2; t2 = tmp; }
+          if (t1 < nMinTs) { nMinTs = t1; }
+          if (t2 > nMaxTs) { nMaxTs = t2; }
+
+          aTasks.push({
+            well: sWell || 'Объект',
+            work: sWork || 'Этап работ',
+            startTs: t1,
+            endTs: t2,
+            startStr: formatDateObj(oStart),
+            endStr: formatDateObj(oEnd),
+            comment: sComment
+          });
+        }
+      }
+
+      if (aTasks.length === 0) { return ''; }
+
+      var nSpan = Math.max(86400000, nMaxTs - nMinTs);
+      var sMinLabel = formatDateObj(new Date(nMinTs));
+      var sMidLabel = formatDateObj(new Date(nMinTs + nSpan / 2));
+      var sMaxLabel = formatDateObj(new Date(nMaxTs));
+
+      var aRowsHtml = [];
+      for (var i = 0; i < aTasks.length; i++) {
+        var tk = aTasks[i];
+        var nLeftPct = Math.max(0, Math.min(96, ((tk.startTs - nMinTs) / nSpan) * 100));
+        var nWidthPct = Math.max(4, Math.min(100 - nLeftPct, ((tk.endTs - tk.startTs) / nSpan) * 100));
+        var sLowComm = tk.comment.toLowerCase();
+        var bIsWarn = (sLowComm.indexOf('отстав') !== -1 || sLowComm.indexOf('риск') !== -1 || sLowComm.indexOf('нпв') !== -1 || sLowComm.indexOf('задерж') !== -1);
+
+        aRowsHtml.push(
+          "<div class='gantt-row'>" +
+          "  <div><div class='gantt-well'>" + escapeHtml(tk.well) + "</div><div class='gantt-dates-sub'>" + tk.startStr + " — " + tk.endStr + "</div></div>" +
+          "  <div class='gantt-lane'><div class='gantt-bar " + (bIsWarn ? "warn-bar" : "") + "' style='left:" + nLeftPct.toFixed(1) + "%; width:" + nWidthPct.toFixed(1) + "%;' title='" + escapeHtml(tk.work) + "'>" + escapeHtml(tk.work) + "</div></div>" +
+          "  <div class='gantt-comment'>" + escapeHtml(tk.comment || 'Без комментариев') + "</div>" +
+          "</div>"
+        );
+      }
+
+      return "<section class='slide'><div class='slide-inner'>" +
+        "<div class='top-bar'><div class='title-block'><span class='gp-flame'></span><h2>" + escapeHtml(sSheetName) + "</h2></div></div>" +
+        "<div class='unit-bar'>График выполнения работ (диаграмма Ганта) • Позиций: " + aTasks.length + "</div>" +
+        "<div class='gantt-container'>" +
+        "  <div class='gantt-header-row'><div>Скважина / Сроки</div><div class='gantt-scale'><span>" + sMinLabel + "</span><span>" + sMidLabel + "</span><span>" + sMaxLabel + "</span></div><div>Комментарий</div></div>" +
+        aRowsHtml.join('') +
+        "</div></div></section>";
+    }
+
+    function parseDateObj(val) {
+      if (val === null || val === undefined || val === '') { return null; }
+      if (typeof val === 'number' && val > 20000 && val < 90000) {
+        return new Date(Math.floor(val - 25569) * 86400 * 1000);
+      }
+      var s = String(val).trim();
+      if (/^\d{5}(\.\d+)?$/.test(s)) {
+        return new Date(Math.floor(parseFloat(s) - 25569) * 86400 * 1000);
+      }
+      var m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+      if (m) {
+        var yr = parseInt(m[3], 10);
+        if (yr < 100) { yr += 2000; }
+        return new Date(Date.UTC(yr, parseInt(m[2], 10) - 1, parseInt(m[1], 10)));
+      }
+      return null;
+    }
+
+    function formatDateObj(oDate) {
+      return ('0' + oDate.getUTCDate()).slice(-2) + '.' + ('0' + (oDate.getUTCMonth() + 1)).slice(-2) + '.' + oDate.getUTCFullYear();
+    }
+
+    function parseAndBuildCombinedSheet(sheetData, sSlideKey, aPreferredPadOrder, aSortedKnownPads) {
+      var sSheetName = sheetData.name;
+      var aVal = sheetData.values;
+      if (!aVal || aVal.length < 2) { return ''; }
+
+      var aHeaders = aVal[0];
+      var aItems = [];
+      var sLastPad = '';
+
+      for (var i = 1; i < aVal.length; i++) {
+        var row = aVal[i];
+        if (!row) { continue; }
+        var sWell = String(row[0] || '').trim();
+        var sLowerWell = sWell.toLowerCase();
+        if (!sWell || sLowerWell.indexOf('итого') === 0 || sLowerWell.indexOf('всего') === 0) { continue; }
+
+        var sExplicitPad = String(row[5] || '').trim();
+        if (sExplicitPad) { sLastPad = sExplicitPad; }
+        var sPadGroup = sExplicitPad || sLastPad || detectPadFromWell(sWell, aSortedKnownPads);
+
+        var sDebitPlan = formatCellVal(row[1]);
+        var sDebitFact = formatCellVal(row[2]);
+        var nDebitPlan = parseNum(sDebitPlan);
+        var nDebitFact = parseNum(sDebitFact);
+
+        var sPressPlan = formatCellVal(row[3]);
+        var sPressFact = formatCellVal(row[4]);
+        var nPressPlan = parseNum(sPressPlan);
+        var nPressFact = parseNum(sPressFact);
+
+        if (!isNaN(nDebitPlan) || !isNaN(nDebitFact) || !isNaN(nPressPlan) || !isNaN(nPressFact)) {
+          aItems.push({
+            pad: sPadGroup,
+            well: sWell,
+            dPlanStr: sDebitPlan || '0',
+            dFactStr: sDebitFact || '0',
+            dPlanNum: isNaN(nDebitPlan) ? 0 : Math.max(0, nDebitPlan),
+            dFactNum: isNaN(nDebitFact) ? 0 : Math.max(0, nDebitFact),
+            pPlanStr: sPressPlan || '—',
+            pFactStr: sPressFact || '—',
+            pPlanNum: isNaN(nPressPlan) ? 0 : Math.max(0, nPressPlan),
+            pFactNum: isNaN(nPressFact) ? 0 : Math.max(0, nPressFact)
+          });
+        }
+      }
+
+      if (aItems.length === 0) { return ''; }
+
+      var sDebitUnit = extractUnit(aHeaders[1] || aHeaders[2], 'тыс. м³/сут');
+      var sPressUnit = extractUnit(aHeaders[3] || aHeaders[4], 'МПа / кгс/см²');
+      var sUnitHint = 'Дебит (' + sDebitUnit + ')  |  Давление, справочно (' + sPressUnit + ')';
+
+      var oGroups = {};
+      var aGroupOrder = [];
+      for (var p = 0; p < aPreferredPadOrder.length; p++) { oGroups[aPreferredPadOrder[p]] = []; }
+      for (var k = 0; k < aItems.length; k++) {
+        var item = aItems[k];
+        if (!oGroups[item.pad]) { oGroups[item.pad] = []; }
+        oGroups[item.pad].push(item);
+      }
+      for (var p2 = 0; p2 < aPreferredPadOrder.length; p2++) {
+        var sKey = aPreferredPadOrder[p2];
+        if (oGroups[sKey] && oGroups[sKey].length > 0) { aGroupOrder.push(sKey); }
+      }
+      for (var key in oGroups) {
+        if (oGroups.hasOwnProperty(key) && oGroups[key].length > 0 && aGroupOrder.indexOf(key) === -1) {
+          aGroupOrder.push(key);
+        }
+      }
+
+      var aSectionsHtml = [];
+      for (var g = 0; g < aGroupOrder.length; g++) {
+        var sPadTitle = aGroupOrder[g];
+        var aPadWells = oGroups[sPadTitle];
+        var aCards = [];
+
+        for (var w = 0; w < aPadWells.length; w++) {
+          var it = aPadWells[w];
+          var nDMax = Math.max(it.dPlanNum, it.dFactNum);
+          var nDPlanPct = (nDMax > 0) ? Math.round((it.dPlanNum / nDMax) * 100) : 0;
+          var nDFactPct = (nDMax > 0) ? Math.round((it.dFactNum / nDMax) * 100) : 0;
+          var sDBadge = '';
+          var bDOk = true;
+          if (it.dPlanNum > 0) {
+            var nDExec = Math.round((it.dFactNum / it.dPlanNum) * 100);
+            bDOk = (nDExec >= 100);
+            sDBadge = "<span class='pf-delta " + (bDOk ? 'delta-ok' : 'delta-warn') + "'>" + nDExec + '%</span>';
+          }
+
+          var sPBadge = '';
+          if (it.pPlanNum > 0) {
+            var nPExec = Math.round((it.pFactNum / it.pPlanNum) * 100);
+            var bPOk = (nPExec >= 100);
+            sPBadge = "<span class='pf-delta " + (bPOk ? 'delta-ok' : 'delta-warn') + "'>" + nPExec + '%</span>';
+          }
+
+          var sStatusAttr = bDOk ? 'ok' : 'warn';
+
+          aCards.push(
+            "<div class='pf-group' data-well='" + escapeHtml((sPadTitle + ' ' + it.well).toLowerCase()) + "' data-status='" + sStatusAttr + "'>" +
+            "<div class='pf-well-head'><span class='pf-well-title'>" + escapeHtml(it.well) + '</span>' + sDBadge + '</div>' +
+            "<div class='pf-row'><span class='pf-tag'>План</span><div class='pf-track'><div class='pf-fill plan' style='width:" + nDPlanPct + "%;'></div></div><span class='pf-val'>" + escapeHtml(it.dPlanStr) + '</span></div>' +
+            "<div class='pf-row'><span class='pf-tag'>Факт</span><div class='pf-track'><div class='pf-fill gp-cyan' style='width:" + nDFactPct + "%;'></div></div><span class='pf-val'>" + escapeHtml(it.dFactStr) + '</span></div>' +
+            "<div class='press-ref'><span class='press-label'>Давление (план / факт):</span><span class='press-vals'>" + escapeHtml(it.pPlanStr) + ' / ' + escapeHtml(it.pFactStr) + ' ' + sPBadge + '</span></div>' +
+            '</div>'
+          );
+        }
+
+        aSectionsHtml.push(
+          "<div class='pad-section'><div class='pad-sec-title'><span>" + escapeHtml(sPadTitle) + "</span><span class='pad-sec-count'>Скважин: " + aPadWells.length + '</span></div>' +
+          "<div class='pf-grid'>" + aCards.join('') + '</div></div>'
+        );
+      }
+
+      return "<section class='slide'><div class='slide-inner'>" +
+        "<div class='top-bar'><div class='title-block'><span class='gp-flame'></span><h2>" + escapeHtml(sSheetName) + '</h2></div>' +
+        "<div class='toolbar'><div class='legend'><div class='legend-item'><span class='dot plan'></span>План дебита</div><div class='legend-item'><span class='dot gp-cyan'></span>Факт дебита</div></div>" +
+        "<div class='filter-box'><input type='text' class='filter-input' data-type='" + sSlideKey + "' placeholder='Поиск куста / скв...'>" +
+        "<button class='f-btn active' data-type='" + sSlideKey + "' data-st='all'>Все</button>" +
+        "<button class='f-btn' data-type='" + sSlideKey + "' data-st='ok'>&ge; 100%</button>" +
+        "<button class='f-btn' data-type='" + sSlideKey + "' data-st='warn'>&lt; 100%</button>" +
+        "<span class='f-count' id='count-" + sSlideKey + "'>" + aItems.length + ' из ' + aItems.length + '</span></div></div></div>' +
+        "<div class='unit-bar'>" + escapeHtml(sUnitHint) + '</div>' +
+        "<div class='pad-sections-wrap' id='wrap-" + sSlideKey + "'>" + aSectionsHtml.join('') + '</div></div></section>';
+    }
+
+    function buildWellPadsMatrixSlide(sSheetName, sUnitHint, aPadOrder, oPadsMap) {
+      if (!aPadOrder || aPadOrder.length === 0) { return ''; }
+      var aCards = [];
+      for (var p = 0; p < aPadOrder.length; p++) {
+        var sPadName = aPadOrder[p];
+        var oPadData = oPadsMap[sPadName];
+        var aLayers = oPadData.layers;
+        var aLayersHtml = [];
+
+        for (var l = 0; l < aLayers.length; l++) {
+          var lay = aLayers[l];
+          var nTotalSlots = Math.max(lay.planNum, lay.factNum);
+          var aCells = [];
+
+          for (var c = 1; c <= nTotalSlots; c++) {
+            if (c <= lay.factNum && c <= lay.planNum) {
+              aCells.push("<span class='w-cell done' title='Скв. №" + c + ": Выполнено (по плану)'></span>");
+            } else if (c <= lay.factNum && c > lay.planNum) {
+              aCells.push("<span class='w-cell extra' title='Скв. №" + c + ": Сверх плана'></span>");
+            } else {
+              aCells.push("<span class='w-cell todo' title='Скв. №" + c + ": В плане (ожидается)'></span>");
+            }
+          }
+
+          aLayersHtml.push(
+            "<div class='layer-block'><div class='layer-head'><span>" + escapeHtml(lay.layer) + "</span><span class='layer-nums'>Факт: <b>" + escapeHtml(lay.factStr) + '</b> из ' + escapeHtml(lay.planStr) + '</span></div>' +
+            "<div class='well-cells'>" + aCells.join('') + '</div></div>'
+          );
+        }
+
+        var sDebitBadge = oPadData.totalDebit
+          ? "<span class='pad-debit'>Сумм. дебит: " + escapeHtml(oPadData.totalDebit) + '</span>'
+          : '';
+
+        aCards.push(
+          "<div class='pad-card'><div class='pad-header'><div class='pad-title'>" + escapeHtml(sPadName) + '</div>' + sDebitBadge + '</div>' + aLayersHtml.join('') + '</div>'
+        );
+      }
+
+      return "<section class='slide'><div class='slide-inner'>" +
+        "<div class='top-bar'><div class='title-block'><span class='gp-flame'></span><h2>" + escapeHtml(sSheetName) + '</h2></div>' +
+        "<div class='legend'><div class='legend-item'><span class='cell-legend-box w-cell done'></span>Введено (план)</div>" +
+        "<div class='legend-item'><span class='cell-legend-box w-cell todo'></span>Ожидается (план)</div>" +
+        "<div class='legend-item'><span class='cell-legend-box w-cell extra'></span>Сверх плана</div></div></div>" +
+        "<div class='unit-bar'>" + escapeHtml(sUnitHint) + '</div>' +
+        "<div class='pads-grid'>" + aCards.join('') + '</div></div></section>';
+    }
+
+    function formatExcelDate(val) {
+      var oD = parseDateObj(val);
+      if (oD) { return formatDateObj(oD); }
+      return formatCellVal(val);
+    }
+
+    function isDateHeader(sHeader) {
+      if (!sHeader) { return false; }
+      var sLow = String(sHeader).toLowerCase();
+      return (sLow.indexOf('начал') !== -1 || sLow.indexOf('оконч') !== -1 || sLow.indexOf('дата') !== -1 || sLow.indexOf('срок') !== -1 || sLow.indexOf('ввод') !== -1 || sLow.indexOf('пуск') !== -1);
+    }
+
+    function detectPadFromWell(sWellName, aSortedKnownPads) {
+      var sLow = sWellName.toLowerCase();
+      for (var i = 0; i < aSortedKnownPads.length; i++) {
+        var sPad = aSortedKnownPads[i];
+        var sCleanCode = sPad.replace(/куст/gi, '').replace(/кп/gi, '').replace(/[№#]/g, '').trim().toLowerCase();
+        if (!sCleanCode) { continue; }
+        var idxFound = sLow.indexOf(sCleanCode);
+        if (idxFound !== -1) {
+          var chBefore = idxFound > 0 ? sLow.charAt(idxFound - 1) : '';
+          var chAfter = idxFound + sCleanCode.length < sLow.length ? sLow.charAt(idxFound + sCleanCode.length) : '';
+          var isDigitBefore = (chBefore >= '0' && chBefore <= '9');
+          var isDigitAfter = (chAfter >= '0' && chAfter <= '9');
+          if (!isDigitBefore && !isDigitAfter) {
+            return sPad;
+          }
+        }
+      }
+      var mCode = sWellName.match(/(\d{2,3}-\d{1,3})/);
+      if (mCode && mCode[1]) {
+        for (var j = 0; j < aSortedKnownPads.length; j++) {
+          if (aSortedKnownPads[j].indexOf(mCode[1]) !== -1) { return aSortedKnownPads[j]; }
+        }
+        return mCode[1];
+      }
+      var mPrefix = sWellName.match(/(?:куст|кп|к\.?)\s*№?\s*([а-яa-z0-9-]+)/i);
+      if (mPrefix && mPrefix[1]) { return mPrefix[1]; }
+      var mFourDigit = sWellName.match(/(?:^|[^0-9])(\d{2})\d{2}(?:[^0-9]|$)/);
+      if (mFourDigit && mFourDigit[1]) { return mFourDigit[1]; }
+      var mLeadNum = sWellName.match(/(?:^|[^0-9])(\d{1,3})[-/.]\d+/);
+      if (mLeadNum && mLeadNum[1]) { return mLeadNum[1]; }
+      return '29';
+    }
+
+    function formatCellVal(val) {
+      if (val === null || val === undefined) { return ''; }
+      if (typeof val === 'number') { return String(Math.round(val * 100) / 100); }
+      return String(val).trim();
+    }
+    function extractUnit(headerText, fallbackUnit) {
+      if (!headerText) { return fallbackUnit; }
+      var s = String(headerText).trim();
+      var mParen = s.match(/\(([^)]+)\)/);
+      if (mParen && mParen[1]) { return mParen[1].trim(); }
+      var idxComma = s.lastIndexOf(',');
+      if (idxComma !== -1 && idxComma < s.length - 1) { return s.substring(idxComma + 1).trim(); }
+      return fallbackUnit;
+    }
+    function parseNum(str) {
+      if (!str) { return NaN; }
+      var cleaned = String(str).replace(/\s+/g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
+      return parseFloat(cleaned);
+    }
+    function escapeHtml(text) {
+      if (text === null || text === undefined) { return ''; }
+      return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
